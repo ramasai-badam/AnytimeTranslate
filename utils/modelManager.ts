@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import RNFS from 'react-native-fs';
+import * as FileSystem from 'expo-file-system';
 
 export interface ModelInfo {
   name: string;
@@ -9,7 +9,6 @@ export interface ModelInfo {
   fileName: string;
 }
 
-// Recommended GGUF models for translation
 export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     name: 'LLaMA 2 7B Chat (Q4_0)',
@@ -39,7 +38,7 @@ export class ModelManager {
   private modelsDir: string;
 
   private constructor() {
-    this.modelsDir = `${RNFS.DocumentDirectoryPath}/models`;
+    this.modelsDir = `${FileSystem.documentDirectory}models/`;
   }
 
   static getInstance(): ModelManager {
@@ -51,9 +50,9 @@ export class ModelManager {
 
   async initializeModelsDirectory(): Promise<void> {
     try {
-      const exists = await RNFS.exists(this.modelsDir);
-      if (!exists) {
-        await RNFS.mkdir(this.modelsDir);
+      const dirInfo = await FileSystem.getInfoAsync(this.modelsDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(this.modelsDir, { intermediates: true });
       }
     } catch (error) {
       console.error('Failed to create models directory:', error);
@@ -65,11 +64,10 @@ export class ModelManager {
     try {
       await this.initializeModelsDirectory();
       
-      const filePath = `${this.modelsDir}/${model.fileName}`;
+      const filePath = `${this.modelsDir}${model.fileName}`;
       
-      // Check if model already exists
-      const exists = await RNFS.exists(filePath);
-      if (exists) {
+      const fileInfo = await FileSystem.getInfoAsync(filePath);
+      if (fileInfo.exists) {
         console.log('Model already exists:', filePath);
         await this.setCurrentModel(filePath);
         return filePath;
@@ -77,22 +75,24 @@ export class ModelManager {
 
       console.log('Downloading model:', model.name);
       
-      // Download the model
-      const downloadResult = await RNFS.downloadFile({
-        fromUrl: model.downloadUrl,
-        toFile: filePath,
-        progress: (res) => {
-          const progress = (res.bytesWritten / res.contentLength) * 100;
+      const downloadResumable = FileSystem.createDownloadResumable(
+        model.downloadUrl,
+        filePath,
+        {},
+        (downloadProgress) => {
+          const progress = (downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite) * 100;
           onProgress?.(progress);
-        },
-      }).promise;
+        }
+      );
 
-      if (downloadResult.statusCode === 200) {
-        console.log('Model downloaded successfully:', filePath);
-        await this.setCurrentModel(filePath);
-        return filePath;
+      const result = await downloadResumable.downloadAsync();
+      
+      if (result) {
+        console.log('Model downloaded successfully:', result.uri);
+        await this.setCurrentModel(result.uri);
+        return result.uri;
       } else {
-        throw new Error(`Download failed with status code: ${downloadResult.statusCode}`);
+        throw new Error('Download failed');
       }
     } catch (error) {
       console.error('Failed to download model:', error);
@@ -121,10 +121,10 @@ export class ModelManager {
   async getInstalledModels(): Promise<string[]> {
     try {
       await this.initializeModelsDirectory();
-      const files = await RNFS.readDir(this.modelsDir);
+      const files = await FileSystem.readDirectoryAsync(this.modelsDir);
       return files
-        .filter(file => file.name.endsWith('.bin') || file.name.endsWith('.gguf'))
-        .map(file => file.path);
+        .filter(file => file.endsWith('.bin') || file.endsWith('.gguf'))
+        .map(file => `${this.modelsDir}${file}`);
     } catch (error) {
       console.error('Failed to get installed models:', error);
       return [];
@@ -133,11 +133,10 @@ export class ModelManager {
 
   async deleteModel(modelPath: string): Promise<void> {
     try {
-      const exists = await RNFS.exists(modelPath);
-      if (exists) {
-        await RNFS.unlink(modelPath);
+      const fileInfo = await FileSystem.getInfoAsync(modelPath);
+      if (fileInfo.exists) {
+        await FileSystem.deleteAsync(modelPath);
         
-        // If this was the current model, clear it
         const currentModel = await this.getCurrentModel();
         if (currentModel === modelPath) {
           await AsyncStorage.removeItem('translation_model_path');
@@ -146,16 +145,6 @@ export class ModelManager {
     } catch (error) {
       console.error('Failed to delete model:', error);
       throw error;
-    }
-  }
-
-  async getModelSize(modelPath: string): Promise<number> {
-    try {
-      const stat = await RNFS.stat(modelPath);
-      return stat.size;
-    } catch (error) {
-      console.error('Failed to get model size:', error);
-      return 0;
     }
   }
 }

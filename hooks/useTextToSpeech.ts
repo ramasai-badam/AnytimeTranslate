@@ -12,10 +12,8 @@ export function useTextToSpeech() {
     try {
       setIsSpeaking(true);
 
-      // Stop any current speech
       await Speech.stop();
 
-      // Language code mapping for expo-speech
       const languageMap: Record<string, string> = {
         'en': 'en-US',
         'es': 'es-ES',
@@ -33,7 +31,6 @@ export function useTextToSpeech() {
 
       const speechLanguage = languageMap[language] || language;
 
-      // Configure speech options
       const options: Speech.SpeechOptions = {
         language: speechLanguage,
         pitch: 1.0,
@@ -53,7 +50,6 @@ export function useTextToSpeech() {
         },
       };
 
-      // Start speaking
       await Speech.speak(text, options);
     } catch (error) {
       console.error('Failed to speak text:', error);
@@ -71,38 +67,9 @@ export function useTextToSpeech() {
     }
   };
 
-  const pause = async () => {
-    try {
-      await Speech.pause();
-    } catch (error) {
-      console.error('Failed to pause speech:', error);
-    }
-  };
-
-  const resume = async () => {
-    try {
-      await Speech.resume();
-    } catch (error) {
-      console.error('Failed to resume speech:', error);
-    }
-  };
-
-  const getAvailableVoices = async () => {
-    try {
-      const voices = await Speech.getAvailableVoicesAsync();
-      return voices;
-    } catch (error) {
-      console.error('Failed to get available voices:', error);
-      return [];
-    }
-  };
-
   return {
     speak,
     stop,
-    pause,
-    resume,
     isSpeaking,
-    getAvailableVoices,
   };
 }

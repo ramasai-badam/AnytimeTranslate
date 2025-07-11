@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Audio } from 'expo-av';
-import { Platform } from 'react-native';
 
 export function useAudioRecording() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
@@ -9,13 +8,11 @@ export function useAudioRecording() {
 
   const startRecording = async () => {
     try {
-      // Request permissions
       const permission = await Audio.requestPermissionsAsync();
       if (permission.status !== 'granted') {
         throw new Error('Permission to access microphone is required!');
       }
 
-      // Set audio mode for recording
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
@@ -24,7 +21,6 @@ export function useAudioRecording() {
         playThroughEarpieceAndroid: false,
       });
 
-      // Create and start recording
       const { recording: newRecording } = await Audio.Recording.createAsync({
         isMeteringEnabled: true,
         android: {
@@ -71,15 +67,12 @@ export function useAudioRecording() {
     try {
       setIsRecording(false);
       
-      // Stop and unload the recording
       await recording.stopAndUnloadAsync();
       
-      // Get the URI of the recorded file
       const uri = recording.getURI();
       setRecordingUri(uri);
       setRecording(null);
       
-      // Reset audio mode
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
@@ -97,20 +90,6 @@ export function useAudioRecording() {
     }
   };
 
-  const getRecordingStatus = async () => {
-    if (!recording) {
-      return null;
-    }
-
-    try {
-      const status = await recording.getStatusAsync();
-      return status;
-    } catch (error) {
-      console.error('Failed to get recording status:', error);
-      return null;
-    }
-  };
-
   const clearRecording = () => {
     setRecordingUri(null);
   };
@@ -120,7 +99,6 @@ export function useAudioRecording() {
     stopRecording,
     isRecording,
     recordingUri,
-    getRecordingStatus,
     clearRecording,
   };
 }

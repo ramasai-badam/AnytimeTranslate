@@ -9,7 +9,7 @@ import {
   Modal,
   ActivityIndicator,
 } from 'react-native';
-import { Download, Trash2, CircleCheck as CheckCircle } from 'lucide-react-native';
+import { Download, Trash2, CheckCircle } from 'lucide-react-native';
 import { ModelManager, AVAILABLE_MODELS, ModelInfo } from '@/utils/modelManager';
 
 interface ModelDownloaderProps {
@@ -196,46 +196,6 @@ export default function ModelDownloader({ visible, onClose, onModelSelected }: M
               </View>
             );
           })}
-
-          {installedModels.length > 0 && (
-            <>
-              <Text style={[styles.sectionTitle, { marginTop: 30 }]}>Installed Models</Text>
-              {installedModels.map((modelPath) => {
-                const fileName = modelPath.split('/').pop() || 'Unknown';
-                const isCurrentModel = currentModel === modelPath;
-
-                return (
-                  <View key={modelPath} style={styles.installedModelCard}>
-                    <View style={styles.modelInfo}>
-                      <Text style={styles.installedModelName}>{fileName}</Text>
-                      {isCurrentModel && (
-                        <View style={styles.currentBadge}>
-                          <CheckCircle size={16} color="#10b981" />
-                          <Text style={styles.currentText}>Current</Text>
-                        </View>
-                      )}
-                    </View>
-                    <View style={styles.installedActions}>
-                      {!isCurrentModel && (
-                        <TouchableOpacity
-                          style={styles.selectButton}
-                          onPress={() => handleSelectModel(modelPath)}
-                        >
-                          <Text style={styles.selectText}>Select</Text>
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={() => handleDeleteModel(modelPath)}
-                      >
-                        <Trash2 size={20} color="#ef4444" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })}
-            </>
-          )}
         </ScrollView>
       </View>
     </Modal>
@@ -379,21 +339,5 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 8,
-  },
-  installedModelCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  installedModelName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#111827',
   },
 });

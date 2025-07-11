@@ -3,30 +3,32 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   TouchableOpacity,
   Alert,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Mic, Volume2, RotateCcw, Download } from 'lucide-react-native';
+import { Mic, Volume2, RotateCcw, Settings } from 'lucide-react-native';
 import LanguageSelector from '@/components/LanguageSelector';
 import RecordingIndicator from '@/components/RecordingIndicator';
 import TranslationDisplay from '@/components/TranslationDisplay';
+import ModelDownloader from '@/components/ModelDownloader';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 import { useSpeechToText } from '@/hooks/useSpeechToText';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 
-const { height, width } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
-function TranslatorScreen() {
+export default function TranslatorScreen() {
   const [topLanguage, setTopLanguage] = useState('en');
   const [bottomLanguage, setBottomLanguage] = useState('es');
   const [topText, setTopText] = useState('');
   const [bottomText, setBottomText] = useState('');
   const [isTopRecording, setIsTopRecording] = useState(false);
   const [isBottomRecording, setIsBottomRecording] = useState(false);
+  const [showModelDownloader, setShowModelDownloader] = useState(false);
 
   const { translateText, isTranslating, isModelLoaded, initializeModel } = useTranslation();
   const { startRecording, stopRecording, isRecording } = useAudioRecording();
@@ -38,7 +40,7 @@ function TranslatorScreen() {
     stopListening: stopTopListening, 
     isListening: isTopListening,
     clearText: clearTopText,
-    error: topError 
+    isSupported: topSpeechSupported
   } = useSpeechToText(getLanguageCode(topLanguage));
   
   const { 
@@ -47,10 +49,9 @@ function TranslatorScreen() {
     stopListening: stopBottomListening, 
     isListening: isBottomListening,
     clearText: clearBottomText,
-    error: bottomError 
+    isSupported: bottomSpeechSupported
   } = useSpeechToText(getLanguageCode(bottomLanguage));
 
-  // Initialize the translation model on component mount
   useEffect(() => {
     const initModel = async () => {
       try {
@@ -83,25 +84,24 @@ function TranslatorScreen() {
 
   const handleStartRecording = async (isTop: boolean) => {
     try {
-      // Stop any current speech
       await stopSpeaking();
 
       if (isTop) {
         setIsTopRecording(true);
         clearTopText();
         setTopText('');
-        await Promise.all([
-          startTopListening(),
-          startRecording()
-        ]);
+        if (topSpeechSupported) {
+          await startTopListening();
+        }
+        await startRecording();
       } else {
         setIsBottomRecording(true);
         clearBottomText();
         setBottomText('');
-        await Promise.all([
-          startBottomListening(),
-          startRecording()
-        ]);
+        if (bottomSpeechSupported) {
+          await startBottomListening();
+        }
+        await startRecording();
       }
     } catch (error) {
       console.error('Recording error:', error);
@@ -113,16 +113,17 @@ function TranslatorScreen() {
 
   const handleStopRecording = async (isTop: boolean) => {
     try {
-      const audioUri = await stopRecording();
+      await stopRecording();
       
       if (isTop) {
-        await stopTopListening();
+        if (topSpeechSupported) {
+          await stopTopListening();
+        }
         setIsTopRecording(false);
         
         if (topSpeechText.trim()) {
           setTopText(topSpeechText);
           
-          // Translate the speech text
           try {
             const translatedText = await translateText(topSpeechText, topLanguage, bottomLanguage);
             setBottomText(translatedText);
@@ -132,13 +133,14 @@ function TranslatorScreen() {
           }
         }
       } else {
-        await stopBottomListening();
+        if (bottomSpeechSupported) {
+          await stopBottomListening();
+        }
         setIsBottomRecording(false);
         
         if (bottomSpeechText.trim()) {
           setBottomText(bottomSpeechText);
           
-          // Translate the speech text
           try {
             const translatedText = await translateText(bottomSpeechText, bottomLanguage, topLanguage);
             setTopText(translatedText);
@@ -178,22 +180,8 @@ function TranslatorScreen() {
     setBottomText(topText);
   };
 
-  const clearAll = () => {
-    setTopText('');
-    setBottomText('');
-    clearTopText();
-    clearBottomText();
-    stopSpeaking();
-  };
-
   const showModelInfo = () => {
-    Alert.alert(
-      'Translation Model',
-      isModelLoaded 
-        ? 'LLaMA model is loaded and ready for translation'
-        : 'LLaMA model is not loaded. Please ensure you have a GGUF model file available.',
-      [{ text: 'OK' }]
-    );
+    setShowModelDownloader(true);
   };
 
   return (
@@ -205,8 +193,9 @@ function TranslatorScreen() {
         <TouchableOpacity onPress={showModelInfo} style={styles.statusButton}>
           <View style={[styles.statusIndicator, { backgroundColor: isModelLoaded ? '#10b981' : '#ef4444' }]} />
           <Text style={styles.statusText}>
-            {isModelLoaded ? 'Model Ready' : 'Model Not Loaded'}
+            {isModelLoaded ? 'Model Ready' : 'Download Model'}
           </Text>
+          <Settings size={16} color="white" style={{ marginLeft: 4 }} />
         </TouchableOpacity>
       </View>
       
@@ -300,6 +289,12 @@ function TranslatorScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      <ModelDownloader
+        visible={showModelDownloader}
+        onClose={() => setShowModelDownloader(false)}
+        onModelSelected={() => {}}
+      />
     </View>
   );
 }
@@ -413,5 +408,3 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
 });
-
-export default TranslatorScreen;

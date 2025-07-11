@@ -12,20 +12,18 @@ export function useSpeechToText(language: string = 'en-US') {
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  // Check if speech recognition is supported
   useEffect(() => {
     const checkSupport = async () => {
       if (Platform.OS === 'web') {
         const supported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
         setIsSupported(supported);
       } else {
-        // For native platforms, check expo-speech-recognition support
         try {
           const supported = await ExpoSpeechRecognitionModule.getSupportedLocales({});
-            setIsSupported(
+          setIsSupported(
             (supported.locales && supported.locales.length > 0) ||
             (supported.installedLocales && supported.installedLocales.length > 0)
-            );
+          );
         } catch (err) {
           console.log('Speech recognition not supported on this device');
           setIsSupported(false);
@@ -36,7 +34,6 @@ export function useSpeechToText(language: string = 'en-US') {
     checkSupport();
   }, []);
 
-  // Handle speech recognition events for native platforms
   useSpeechRecognitionEvent('start', () => {
     setIsListening(true);
     setError(null);
@@ -60,7 +57,6 @@ export function useSpeechToText(language: string = 'en-US') {
     setIsListening(false);
   });
 
-  // Web Speech API setup
   useEffect(() => {
     if (Platform.OS === 'web' && isSupported) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
@@ -126,7 +122,6 @@ export function useSpeechToText(language: string = 'en-US') {
           throw new Error('Speech recognition not available');
         }
       } else {
-        // For native platforms using expo-speech-recognition
         const { status } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
         if (status !== 'granted') {
           throw new Error('Microphone permission not granted');
