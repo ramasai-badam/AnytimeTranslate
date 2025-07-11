@@ -21,8 +21,11 @@ export function useSpeechToText(language: string = 'en-US') {
       } else {
         // For native platforms, check expo-speech-recognition support
         try {
-          const supported = await ExpoSpeechRecognitionModule.getSupportedLocales();
-          setIsSupported(supported.length > 0);
+          const supported = await ExpoSpeechRecognitionModule.getSupportedLocales({});
+            setIsSupported(
+            (supported.locales && supported.locales.length > 0) ||
+            (supported.installedLocales && supported.installedLocales.length > 0)
+            );
         } catch (err) {
           console.log('Speech recognition not supported on this device');
           setIsSupported(false);
