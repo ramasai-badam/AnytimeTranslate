@@ -10,7 +10,6 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { Mic, Volume2, RotateCcw } from 'lucide-react-native';
 import * as Speech from 'expo-speech';
-import { Audio } from 'expo-av';
 import LanguageSelector from '@/components/LanguageSelector';
 import RecordingIndicator from '@/components/RecordingIndicator';
 import TranslationDisplay from '@/components/TranslationDisplay';
@@ -30,16 +29,34 @@ export default function TranslatorScreen() {
 
   const { translateText, isTranslating } = useTranslation();
   const { startRecording, stopRecording, isRecording } = useAudioRecording();
-  const { speechText, startListening, stopListening, isListening, error } = useSpeechToText(topLanguage);
+  const { 
+    speechText: topSpeechText, 
+    startListening: startTopListening, 
+    stopListening: stopTopListening, 
+    isListening: isTopListening,
+    clearText: clearTopText,
+    error: topError 
+  } = useSpeechToText(topLanguage);
+  
+  const { 
+    speechText: bottomSpeechText, 
+    startListening: startBottomListening, 
+    stopListening: stopBottomListening, 
+    isListening: isBottomListening,
+    clearText: clearBottomText,
+    error: bottomError 
+  } = useSpeechToText(bottomLanguage);
 
   const handleStartRecording = async (isTop: boolean) => {
     try {
       if (isTop) {
         setIsTopRecording(true);
-        startListening(); // Start speech recognition
+        clearTopText();
+        await startTopListening();
       } else {
         setIsBottomRecording(true);
-        startListening();
+        clearBottomText();
+        await startBottomListening();
       }
       await startRecording();
     } catch (error) {
@@ -52,20 +69,27 @@ export default function TranslatorScreen() {
   const handleStopRecording = async (isTop: boolean) => {
     try {
       const audioUri = await stopRecording();
-      stopListening(); // Stop speech recognition
-
-      if (audioUri) {
-        // Use actual speechText from the hook
-        const fromLang = isTop ? topLanguage : bottomLanguage;
-        const toLang = isTop ? bottomLanguage : topLanguage;
-
-        const translatedText = await translateText(speechText, fromLang, toLang);
-
-        if (isTop) {
-          setTopText(speechText);
+      
+      if (isTop) {
+        await stopTopListening();
+        setIsTopRecording(false);
+        
+        if (topSpeechText.trim()) {
+          setTopText(topSpeechText);
+          
+          // Translate the speech text
+          const translatedText = await translateText(topSpeechText, topLanguage, bottomLanguage);
           setBottomText(translatedText);
-        } else {
-          setBottomText(speechText);
+        }
+      } else {
+        await stopBottomListening();
+        setIsBottomRecording(false);
+        
+        if (bottomSpeechText.trim()) {
+          setBottomText(bottomSpeechText);
+          
+          // Translate the speech text
+          const translatedText = await translateText(bottomSpeechText, bottomLanguage, topLanguage);
           setTopText(translatedText);
         }
       }
@@ -78,7 +102,7 @@ export default function TranslatorScreen() {
   };
 
   const handleSpeak = (text: string, language: string) => {
-    if (text) {
+    if (text.trim()) {
       Speech.speak(text, {
         language: language,
         pitch: 1.0,
@@ -92,6 +116,13 @@ export default function TranslatorScreen() {
     setBottomLanguage(topLanguage);
     setTopText(bottomText);
     setBottomText(topText);
+  };
+
+  const clearAll = () => {
+    setTopText('');
+    setBottomText('');
+    clearTopText();
+    clearBottomText();
   };
 
   return (
@@ -108,8 +139,9 @@ export default function TranslatorScreen() {
           />
           
           <TranslationDisplay
-            text={topText}
+            text={isTopRecording ? (topSpeechText || 'Listening...') : topText}
             isRotated={true}
+            isLoading={isTopRecording || (isTranslating && isTopRecording)}
           />
           
           <View style={styles.controls}>
@@ -117,7 +149,7 @@ export default function TranslatorScreen() {
               style={[styles.micButton, isTopRecording && styles.recordingButton]}
               onPressIn={() => handleStartRecording(true)}
               onPressOut={() => handleStopRecording(true)}
-              disabled={isBottomRecording}
+              disabled={isBottomRecording || isTranslating}
             >
               <Mic size={32} color="white" />
               {isTopRecording && <RecordingIndicator />}
@@ -126,9 +158,9 @@ export default function TranslatorScreen() {
             <TouchableOpacity
               style={styles.speakerButton}
               onPress={() => handleSpeak(topText, topLanguage)}
-              disabled={!topText}
+              disabled={!topText.trim()}
             >
-              <Volume2 size={28} color={topText ? "white" : "#666"} />
+              <Volume2 size={28} color={topText.trim() ? "white" : "#666"} />
             </TouchableOpacity>
           </View>
         </View>
@@ -139,6 +171,10 @@ export default function TranslatorScreen() {
         <TouchableOpacity style={styles.swapButton} onPress={swapLanguages}>
           <RotateCcw size={24} color="white" />
         </TouchableOpacity>
+        
+        {isTranslating && (
+          <Text style={styles.translatingText}>Translating...</Text>
+        )}
       </View>
 
       {/* Bottom Section */}
@@ -150,8 +186,9 @@ export default function TranslatorScreen() {
         />
         
         <TranslationDisplay
-          text={bottomText}
+          text={isBottomRecording ? (bottomSpeechText || 'Listening...') : bottomText}
           isRotated={false}
+          isLoading={isBottomRecording || (isTranslating && isBottomRecording)}
         />
         
         <View style={styles.controls}>
@@ -159,7 +196,7 @@ export default function TranslatorScreen() {
             style={[styles.micButton, isBottomRecording && styles.recordingButton]}
             onPressIn={() => handleStartRecording(false)}
             onPressOut={() => handleStopRecording(false)}
-            disabled={isTopRecording}
+            disabled={isTopRecording || isTranslating}
           >
             <Mic size={32} color="white" />
             {isBottomRecording && <RecordingIndicator />}
@@ -168,9 +205,9 @@ export default function TranslatorScreen() {
           <TouchableOpacity
             style={styles.speakerButton}
             onPress={() => handleSpeak(bottomText, bottomLanguage)}
-            disabled={!bottomText}
+            disabled={!bottomText.trim()}
           >
-            <Volume2 size={28} color={bottomText ? "white" : "#666"} />
+            <Volume2 size={28} color={bottomText.trim() ? "white" : "#666"} />
           </TouchableOpacity>
         </View>
       </View>
@@ -236,7 +273,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   divider: {
-    height: 60,
+    height: 80,
     backgroundColor: '#1a1a1a',
     justifyContent: 'center',
     alignItems: 'center',
@@ -250,5 +287,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  translatingText: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 8,
+    opacity: 0.8,
   },
 });

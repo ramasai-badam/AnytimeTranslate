@@ -1,15 +1,24 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 
 interface TranslationDisplayProps {
   text: string;
   isRotated?: boolean;
+  isLoading?: boolean;
 }
 
 export default function TranslationDisplay({
   text,
   isRotated = false,
+  isLoading = false,
 }: TranslationDisplayProps) {
+  const getDisplayText = () => {
+    if (isLoading) {
+      return 'Processing...';
+    }
+    return text || 'Tap and hold the microphone to start speaking...';
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView 
@@ -17,9 +26,18 @@ export default function TranslationDisplay({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.text, isRotated && styles.rotatedText]}>
-          {text || 'Tap and hold the microphone to start speaking...'}
-        </Text>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="white" />
+            <Text style={[styles.text, styles.loadingText]}>
+              Processing...
+            </Text>
+          </View>
+        ) : (
+          <Text style={[styles.text, isRotated && styles.rotatedText]}>
+            {getDisplayText()}
+          </Text>
+        )}
       </ScrollView>
     </View>
   );
@@ -49,5 +67,14 @@ const styles = StyleSheet.create({
   },
   rotatedText: {
     // Text is already rotated by parent container
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginLeft: 10,
+    fontSize: 16,
   },
 });

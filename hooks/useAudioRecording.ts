@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
 
 export function useAudioRecording() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
