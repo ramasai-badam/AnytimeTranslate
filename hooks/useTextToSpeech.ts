@@ -38,7 +38,6 @@ export function useTextToSpeech() {
         language: speechLanguage,
         pitch: 1.0,
         rate: 0.8,
-        quality: Speech.VoiceQuality.Enhanced,
         onStart: () => {
           setIsSpeaking(true);
         },
