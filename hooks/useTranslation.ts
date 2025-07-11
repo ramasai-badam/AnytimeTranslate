@@ -104,7 +104,7 @@ Translation:`;
         temperature: 0.1,
         top_p: 0.9,
         top_k: 40,
-        repeat_penalty: 1.1,
+        penalty_repeat: 1.1,
         stop: ['\n\n', 'Text:', 'Translation:', '\n---'],
       });
 
