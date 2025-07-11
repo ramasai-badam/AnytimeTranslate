@@ -9,7 +9,7 @@ import {
   Modal,
   ActivityIndicator,
 } from 'react-native';
-import { Download, Trash2, CheckCircle } from 'lucide-react-native';
+import { Download, Trash2, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { ModelManager, AVAILABLE_MODELS, ModelInfo } from '@/utils/modelManager';
 
 interface ModelDownloaderProps {
