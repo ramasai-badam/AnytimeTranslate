@@ -16,6 +16,7 @@ import RecordingIndicator from '@/components/RecordingIndicator';
 import TranslationDisplay from '@/components/TranslationDisplay';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
+import { useSpeechToText } from '@/hooks/useSpeechToText';
 
 const { height, width } = Dimensions.get('window');
 
@@ -29,15 +30,17 @@ export default function TranslatorScreen() {
 
   const { translateText, isTranslating } = useTranslation();
   const { startRecording, stopRecording, isRecording } = useAudioRecording();
+  const { speechText, startListening, stopListening, isListening, error } = useSpeechToText(topLanguage);
 
   const handleStartRecording = async (isTop: boolean) => {
     try {
       if (isTop) {
         setIsTopRecording(true);
+        startListening(); // Start speech recognition
       } else {
         setIsBottomRecording(true);
+        startListening();
       }
-      
       await startRecording();
     } catch (error) {
       Alert.alert('Recording Error', 'Failed to start recording');
@@ -49,17 +52,15 @@ export default function TranslatorScreen() {
   const handleStopRecording = async (isTop: boolean) => {
     try {
       const audioUri = await stopRecording();
-      
+      stopListening(); // Stop speech recognition
+
       if (audioUri) {
-        // TODO: Convert speech to text using local speech recognition
-        // For now, we'll use placeholder text
-        const speechText = "Hello, how are you?"; // This would come from speech-to-text
-        
+        // Use actual speechText from the hook
         const fromLang = isTop ? topLanguage : bottomLanguage;
         const toLang = isTop ? bottomLanguage : topLanguage;
-        
+
         const translatedText = await translateText(speechText, fromLang, toLang);
-        
+
         if (isTop) {
           setTopText(speechText);
           setBottomText(translatedText);
