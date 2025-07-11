@@ -20,7 +20,7 @@ import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 
 const { height, width } = Dimensions.get('window');
 
-export default function TranslatorScreen() {
+function TranslatorScreen() {
   const [topLanguage, setTopLanguage] = useState('en');
   const [bottomLanguage, setBottomLanguage] = useState('es');
   const [topText, setTopText] = useState('');
@@ -413,3 +413,5 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
 });
+
+export default TranslatorScreen;
